@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Receipt Scanner — Upload</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Receipt Scanner (POC)</h1>
+
+      <section class="upload">
+        <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+          <label for="file">Upload receipt image</label>
+          <input type="file" name="file" id="file" />
+          <button type="submit">Upload</button>
+        </form>
+      </section>
+
+      <section style="margin-top:12px">
+        <form id="clear-form" action="{{ url_for('clear_all') }}" method="post" onsubmit="return confirm('Are you sure you want to clear all receipts? This cannot be undone.')">
+          <button id="clear-btn" type="submit">Clear All Receipts</button>
+        </form>
+      </section>
+
+      <section class="aggregate">
+        <h2>Aggregate Totals</h2>
+        {% if summary %}
+        <p><strong>Total receipts:</strong> {{ summary.count }}</p>
+        <p><strong>Sum of totals:</strong> ${{ summary.total_sum }}</p>
+        {% else %}
+        <p>No summary available.</p>
+        {% endif %}
+      </section>
+
+      <section class="list">
+        <h2>Uploaded Receipts</h2>
+        {% if items %}
+        <table>
+          <thead><tr><th>Id</th><th>Filename</th><th>Merchant</th><th>Date</th><th>Total</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for it in items %}
+            <tr class="{{ 'fixed' if it.get('fixed') else ('broken' if it.get('broken') else '') }}">
+              <td><a href="{{ url_for('item', id=it.id) }}">{{ it.id[:8] }}</a></td>
+              <td>{{ it.filename }}</td>
+              <td>
+                {% if it.result and not it.result.error %}
+                  {{ it.result.merchant }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                {% if it.result and not it.result.error %}
+                  {{ it.result.date }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                {% if it.result and not it.result.error %}
+                  ${{ "%.2f" | format((it.result.total | float)) }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>{{ it.status }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p>No receipts uploaded yet.</p>
+        {% endif %}
+      </section>
+    </div>
+  </body>
+</html>

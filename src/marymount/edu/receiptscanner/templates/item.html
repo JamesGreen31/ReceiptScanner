@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Receipt {{ id }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <div class="container">
+      <a href="{{ url_for('index') }}">← Back</a>
+      <h1>Receipt {{ id }}</h1>
+      <dl>
+        <dt>Filename</dt>
+        <dd>{{ item.filename }}</dd>
+        <dt>Status</dt>
+        <dd>{{ item.status }}</dd>
+      </dl>
+
+      <h2>Result</h2>
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <ul class="flashes">
+            {% for m in messages %}
+              <li style="color:crimson">{{ m }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% endwith %}
+
+      <form id="edit-form" action="{{ url_for('save_item', id=id) }}" method="post">
+        <label for="merchant">Merchant</label>
+        <input id="merchant" name="merchant" value="{{ item.result.merchant if item.result else '' }}" />
+
+        <label for="date">Date</label>
+        <input id="date" name="date" value="{{ item.result.date if item.result else '' }}" />
+
+        <label for="total">Total</label>
+        <input id="total" name="total" value="{{ item.result.total if item.result else '' }}" />
+
+        <h3>Raw lines</h3>
+        <textarea id="lines" name="lines" rows="6" cols="60">{{ item.result.lines | join('\n') if item.result and item.result.lines else '' }}</textarea>
+
+        <!-- Hidden originals used to detect edits -->
+        <input type="hidden" id="orig_merchant" value="{{ item.result.merchant if item.result else '' }}" />
+        <input type="hidden" id="orig_date" value="{{ item.result.date if item.result else '' }}" />
+        <input type="hidden" id="orig_total" value="{{ item.result.total if item.result else '' }}" />
+        <input type="hidden" id="orig_lines" value="{{ item.result.lines | join('\n') if item.result and item.result.lines else '' }}" />
+
+        <div style="margin-top:8px">
+          <button id="save-btn" type="submit">Verify</button>
+          <a href="{{ url_for('index') }}"><button type="button">Cancel</button></a>
+          {% if item.path %}
+            <a href="{{ url_for('download_item', id=id) }}">Download uploaded file</a>
+          {% endif %}
+        </div>
+      </form>
+
+      <script>
+        // Toggle the button label between 'Verify' and 'Save' depending on if edits exist
+        (function(){
+          const orig = {
+            merchant: document.getElementById('orig_merchant').value,
+            date: document.getElementById('orig_date').value,
+            total: document.getElementById('orig_total').value,
+            lines: document.getElementById('orig_lines').value,
+          };
+          const fields = ['merchant','date','total','lines'];
+          const btn = document.getElementById('save-btn');
+
+          function checkChanged(){
+            const cur = {
+              merchant: document.getElementById('merchant').value,
+              date: document.getElementById('date').value,
+              total: document.getElementById('total').value,
+              lines: document.getElementById('lines').value,
+            };
+            const changed = (orig.merchant !== cur.merchant) || (orig.date !== cur.date) || (orig.total !== cur.total) || (orig.lines !== cur.lines);
+            btn.textContent = changed ? 'Save' : 'Verify';
+          }
+
+          fields.forEach(function(f){
+            const el = document.getElementById(f);
+            if(el) el.addEventListener('input', checkChanged);
+          });
+          // Initial check
+          checkChanged();
+        })();
+      </script>
+    </div>
+  </body>
+</html>

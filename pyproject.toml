@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "receipt-scanner"
+version = "0.1.0"
+description = "Receipt Scanner package (tied to marymount.edu namespace)"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [ {name = "Marymount University", email = "info@marymount.edu"} ]
+keywords = ["receipt", "scanner", "ocr"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.8"
+
+dependencies = []
+
+[project.urls]
+"Homepage" = "https://www.marymount.edu/"
+"Source" = "https://github.com/JamesGreen31/ReceiptScanner"
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "ruff",
+    "isort",
+]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+]
+test = [
+    "pytest",
+    "pytest-cov",
+]
+all = [
+    "black",
+    "ruff",
+    "isort",
+    "sphinx",
+    "sphinx-rtd-theme",
+    "pytest",
+    "pytest-cov",
+    "flask"
+]
+web = [
+    "flask"
+]
+
+[tool.setuptools.package-data]
+"marymount.edu.receiptscanner" = ["templates/*.html", "static/*"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["marymount*", "receiptscanner"]
+
+[project.scripts]
+receiptscanner = "marymount.edu.receiptscanner.main:main"
