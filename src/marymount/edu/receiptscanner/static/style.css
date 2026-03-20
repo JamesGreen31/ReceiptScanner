@@ -7,5 +7,4 @@ th, td { border:1px solid #eee; padding:8px; text-align:left }
 pre { background:#fafafa; padding:8px; border-radius:4px; overflow:auto }
 /* Row states */
 .broken { background: #fff3b0; }
-.manual { background: #d8eaff; }
 .fixed { background: #dff7d8; }

@@ -29,6 +29,7 @@ from .processor import (
     OCRProcessor,
     TextProcessor,
 )
+from .service import ReceiptService
 
 BASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BASE_DIR.parents[3]
@@ -41,14 +42,15 @@ app.secret_key = "dev-secret-key"
 
 DOCS_DIR = REPO_ROOT / "docs" / "_build" / "html"
 
-# In-memory store: id -> {filename, status, result}
-STORE: Dict[str, Dict[str, Any]] = {}
+# Application service layer (wraps in-memory store)
+service = ReceiptService(UPLOAD_DIR)
+STORE: Dict[str, Dict[str, Any]] = service.store
 
 # Add demo sample items (one good, one broken) for testing
 sample_good_id = "sample-good"
 sample_broken_id = "sample-broken"
 
-STORE[sample_good_id] = {
+service.store[sample_good_id] = {
     "filename": "sample_good.jpg",
     "status": "done",
     "result": {
@@ -62,7 +64,7 @@ STORE[sample_good_id] = {
     "path": str(UPLOAD_DIR / "sample_good.jpg"),
 }
 
-STORE[sample_broken_id] = {
+service.store[sample_broken_id] = {
     "filename": "sample_broken.jpg",
     "status": "done",
     "result": {
@@ -79,12 +81,22 @@ STORE[sample_broken_id] = {
 
 @app.route("/", methods=["GET"])
 def index():
-    records = receipts_dataframe(STORE)
+    # Optional collection filter via query param
+    collection = request.args.get("collection") or None
+    if collection:
+        filtered_store = {k: v for k, v in STORE.items() if v.get("collection") == collection}
+    else:
+        filtered_store = STORE
+
+    records = receipts_dataframe(filtered_store)
 
     records_map = {str(r.get("id")): r for r in records}
     items = []
 
     for receipt_id, stored in STORE.items():
+        # Skip items not in the current collection filter
+        if collection and stored.get("collection") != collection:
+            continue
         meta = records_map.get(receipt_id, {})
         item = {"id": receipt_id, **stored}
         item["broken"] = bool(meta.get("broken", stored.get("result") is None))
@@ -101,7 +113,10 @@ def index():
         "total_sum": f"{total_sum:.2f}",
     }
 
-    return render_template("index.html", items=items, summary=summary)
+    # Available collections for filtering
+    collections = sorted({v.get("collection") for v in STORE.values() if v.get("collection")})
+
+    return render_template("index.html", items=items, summary=summary, collections=collections, current_collection=collection)
 
 
 @app.route("/upload", methods=["POST"])
@@ -111,22 +126,17 @@ def upload():
         flash("Please choose a file to upload.")
         return redirect(url_for("index"))
 
-    uid = str(uuid.uuid4())
     filename = Path(f.filename).name
+    # Keep original filename on disk but prefix with uid to avoid clashes
+    uid = str(uuid.uuid4())
     save_path = UPLOAD_DIR / f"{uid}_{filename}"
     f.save(save_path)
 
-    STORE[uid] = {
-        "filename": filename,
-        "status": "processing",
-        "result": None,
-        "path": str(save_path),
-        "manual": False,
-        "fixed": False,
-    }
+    collection = (request.form.get("collection") or "").strip() or None
+    uid = service.add_receipt(save_path, filename, collection=collection)
 
     scanner = ReceiptScanner(
-        use_ocr=False,
+        use_ocr=True,
         image_processor=ImagePreprocessor(),
         ocr_processor=OCRProcessor(),
         text_processor=TextProcessor(),
@@ -134,11 +144,9 @@ def upload():
 
     try:
         res = scanner.parse_image(str(save_path))
-        STORE[uid]["status"] = "done"
-        STORE[uid]["result"] = res
+        service.set_result(uid, res, status="done")
     except Exception as exc:
-        STORE[uid]["status"] = "error"
-        STORE[uid]["result"] = {"error": str(exc)}
+        service.set_result(uid, {"error": str(exc)}, status="error")
 
     return redirect(url_for("index"))
 
@@ -150,31 +158,64 @@ def item(id: str):
         return "Not found", 404
     return render_template("item.html", id=id, item=it)
 
+@app.route("/item/<id>/preview")
+def preview_item(id: str):
+    it = STORE.get(id)
+    if not it:
+        return "Not found", 404
+
+    raw_path = it.get("path")
+    if not raw_path:
+        return "No file available", 404
+
+    original = Path(raw_path)
+    processed = original.with_name(f"{original.stem}_processed{original.suffix}")
+
+    if not processed.exists() or not processed.is_file():
+        return "Processed preview not found", 404
+
+    try:
+        return send_file(processed)
+    except Exception:
+        return "Processed preview not found", 404
 
 @app.route("/item/<id>/save", methods=["POST"])
 def save_item(id: str):
     it = STORE.get(id)
     if not it:
         return "Not found", 404
-
     merchant = (request.form.get("merchant") or "").strip()
     date = (request.form.get("date") or "").strip()
     total = (request.form.get("total") or "").strip()
     lines = (request.form.get("lines") or "").strip()
+    gallons = (request.form.get("gallons") or "").strip()
+    ppg = (request.form.get("price_per_gallon") or "").strip()
 
     if not (merchant and date and total):
         flash("Merchant, date and total are required to save/verify.")
         return redirect(url_for("item", id=id))
 
-    it["result"] = {
+    result: dict = {
         "merchant": merchant,
         "date": date,
         "total": total,
         "lines": [lines] if lines else [],
     }
-    it["fixed"] = True
-    it["manual"] = False
-    it["status"] = "done"
+
+    if gallons:
+        result["gallons"] = gallons
+        result["gallons_source"] = "manual"
+
+    if ppg:
+        result["price_per_gallon"] = ppg
+        result["price_per_gallon_source"] = "manual"
+
+    # Save through the service to normalize values
+    try:
+        service.set_result(id, result, status="done")
+        service.mark_fixed(id)
+    except KeyError:
+        return "Not found", 404
 
     return redirect(url_for("index"))
 

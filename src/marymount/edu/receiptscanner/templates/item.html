@@ -16,8 +16,25 @@
         <dt>Status</dt>
         <dd>{{ item.status }}</dd>
       </dl>
-
+    {% if item.path %}
+      <h2>Receipt Preview</h2>
+      <div class="receipt-preview">
+        <img
+          src="{{ url_for('preview_item', id=id) }}"
+          alt="Preprocessed receipt preview"
+          style="max-width: 100%; height: auto; border: 1px solid #ccc; padding: 8px; background: #fff;"
+        />
+      </div>
+    {% endif %}
       <h2>Result</h2>
+      {% if item.result and not item.result.error %}
+      <dl>
+        <dt>Gallons</dt>
+        <dd>{{ item.result.get('gallons') if item.result.get('gallons') is not none else '—' }}</dd>
+        <dt>Price per gallon</dt>
+        <dd>{% if item.result.get('price_per_gallon') is not none %}${{ "%.3f" | format((item.result.get('price_per_gallon') | float)) }}{% else %}—{% endif %}</dd>
+      </dl>
+      {% endif %}
       {% with messages = get_flashed_messages() %}
         {% if messages %}
           <ul class="flashes">
@@ -38,6 +55,12 @@
         <label for="total">Total</label>
         <input id="total" name="total" value="{{ item.result.total if item.result else '' }}" />
 
+        <label for="gallons">Gallons</label>
+        <input id="gallons" name="gallons" value="{% if item.result and item.result.get('gallons') is not none %}{{ '%.3f'|format(item.result.get('gallons')|float) }}{% else %}{% endif %}" />
+
+        <label for="price_per_gallon">Price per gallon</label>
+        <input id="price_per_gallon" name="price_per_gallon" value="{% if item.result and item.result.get('price_per_gallon') is not none %}{{ '%.3f'|format(item.result.get('price_per_gallon')|float) }}{% else %}{% endif %}" />
+
         <h3>Raw lines</h3>
         <textarea id="lines" name="lines" rows="6" cols="60">{{ item.result.lines | join('\n') if item.result and item.result.lines else '' }}</textarea>
 
@@ -46,6 +69,8 @@
         <input type="hidden" id="orig_date" value="{{ item.result.date if item.result else '' }}" />
         <input type="hidden" id="orig_total" value="{{ item.result.total if item.result else '' }}" />
         <input type="hidden" id="orig_lines" value="{{ item.result.lines | join('\n') if item.result and item.result.lines else '' }}" />
+        <input type="hidden" id="orig_gallons" value="{{ item.result.get('gallons') if item.result else '' }}" />
+        <input type="hidden" id="orig_price_per_gallon" value="{{ item.result.get('price_per_gallon') if item.result else '' }}" />
 
         <div style="margin-top:8px">
           <button id="save-btn" type="submit">Verify</button>
@@ -55,6 +80,16 @@
           {% endif %}
         </div>
       </form>
+
+      {% if item.result and not item.result.error %}
+        <p style="margin-top:8px; font-size:0.9em; color:#444">
+          Gallons: <strong>{% if item.result.get('gallons') is not none %}{{ '%.3f'|format(item.result.get('gallons')|float) }}{% else %}—{% endif %}</strong>
+          <em>({{ item.result.get('gallons_source') or 'unknown' }})</em>
+          &nbsp; • &nbsp;
+          Price per gallon: <strong>{% if item.result.get('price_per_gallon') is not none %}${{ '%.3f'|format(item.result.get('price_per_gallon')|float) }}{% else %}—{% endif %}</strong>
+          <em>({{ item.result.get('price_per_gallon_source') or 'unknown' }})</em>
+        </p>
+      {% endif %}
 
       <script>
         // Toggle the button label between 'Verify' and 'Save' depending on if edits exist

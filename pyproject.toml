@@ -28,6 +28,9 @@ dev = [
     "black",
     "ruff",
     "isort",
+    "flask",
+    "pillow",
+    "pytesseract"
 ]
 docs = [
     "sphinx",
@@ -45,7 +48,9 @@ all = [
     "sphinx-rtd-theme",
     "pytest",
     "pytest-cov",
-    "flask"
+    "flask",
+    "pillow",
+    "pytesseract"
 ]
 web = [
     "flask"

@@ -14,6 +14,8 @@
         <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
           <label for="file">Upload receipt image</label>
           <input type="file" name="file" id="file" />
+          <label for="collection">Collection (optional)</label>
+          <input id="collection" name="collection" placeholder="e.g. March-2026" />
           <button type="submit">Upload</button>
         </form>
       </section>
@@ -34,16 +36,30 @@
         {% endif %}
       </section>
 
+      <section style="margin-top:12px">
+        <form method="get" action="{{ url_for('index') }}">
+          <label for="filter_collection">Filter by collection</label>
+          <select id="filter_collection" name="collection">
+            <option value="">-- All --</option>
+            {% for c in collections %}
+              <option value="{{ c }}" {% if current_collection == c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit">Filter</button>
+        </form>
+      </section>
+
       <section class="list">
         <h2>Uploaded Receipts</h2>
         {% if items %}
         <table>
-          <thead><tr><th>Id</th><th>Filename</th><th>Merchant</th><th>Date</th><th>Total</th><th>Status</th></tr></thead>
+          <thead><tr><th>Id</th><th>Filename</th><th>Collection</th><th>Merchant</th><th>Date</th><th>Total</th><th>Gallons</th><th>PPG</th><th>Status</th></tr></thead>
           <tbody>
             {% for it in items %}
             <tr class="{{ 'fixed' if it.get('fixed') else ('broken' if it.get('broken') else '') }}">
               <td><a href="{{ url_for('item', id=it.id) }}">{{ it.id[:8] }}</a></td>
               <td>{{ it.filename }}</td>
+              <td>{{ it.collection or '—' }}</td>
               <td>
                 {% if it.result and not it.result.error %}
                   {{ it.result.merchant }}
@@ -61,6 +77,20 @@
               <td>
                 {% if it.result and not it.result.error %}
                   ${{ "%.2f" | format((it.result.total | float)) }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                {% if it.result and it.result.get('gallons') is not none %}
+                  {{ "%.3f" | format((it.result.get('gallons') | float)) }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                {% if it.result and it.result.get('price_per_gallon') is not none %}
+                  ${{ "%.3f" | format((it.result.get('price_per_gallon') | float)) }}
                 {% else %}
                   —
                 {% endif %}
