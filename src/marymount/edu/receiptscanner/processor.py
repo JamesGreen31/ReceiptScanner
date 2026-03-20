@@ -28,7 +28,7 @@ class ImagePreprocessor:
     def preprocess(self, image_path: str) -> str:
         path = Path(image_path)
 
-        # --- Validation: file exists ---
+        # --- Validation: image file exists ---
         if not path.exists() or not path.is_file():
             raise ValueError(f"File does not exist: {image_path}")
 
@@ -81,7 +81,6 @@ class ImagePreprocessor:
             return int((p - min_val) * 255 / (max_val - min_val))
 
         return img.point(scale)
-
 
 class OCRProcessor:
     def __init__(
@@ -177,11 +176,13 @@ class TextProcessor:
     }
 
     AMOUNT_REGEX = re.compile(
-        r"\$\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)"
+        r"\$\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2,3})?)"
+    )
+    GALLONS_REGEX = re.compile(
+        r"\b([0-9]+(?:\.[0-9]+)?)\s*(?:g|gal|gallon|gallons)\b",
+        re.IGNORECASE
     )
 
-    GALLONS_REGEX = re.compile(r"\b([0-9]+(?:\.[0-9]+)?)\s*(?:gal(?:lons)?|gallons)\b", re.IGNORECASE)
-    PRICE_PER_GAL_REGEX = re.compile(r"\$?\s*([0-9]+(?:\.[0-9]+)?)\s*/\s*(?:gal|gallon|gallons)\b", re.IGNORECASE)
 
     DATE_REGEX = re.compile(
         r"\b("
@@ -198,30 +199,19 @@ class TextProcessor:
         total = self._extract_total(text)
         date = self._extract_date(text)
         gallons = self._extract_gallons(text)
-        ppg = self._extract_price_per_gallon(text)
 
         # If price-per-gallon not explicitly given, compute using total/gallons
         price_per_gallon: Optional[float] = None
         gallons_source: Optional[str] = None
-        ppg_source: Optional[str] = None
         try:
             if gallons is not None:
                 gallons = float(gallons)
                 gallons_source = "ocr"
-
-            if ppg is not None:
-                price_per_gallon = float(ppg)
-                ppg_source = "ocr"
-            elif gallons is not None and total is not None and ppg is None:
-                # Only calculate if OCR did NOT succeed for PPG
-                t = float(str(total).replace(",", ""))
-                g = float(str(gallons))
-                if g > 0:
-                    price_per_gallon = t / g
-                    ppg_source = "calculated"
         except Exception:
             price_per_gallon = None
 
+        price_per_gallon = float(total) / float(gallons)
+        ppg_source = "calculated"
         return {
             "merchant": merchant,
             "date": date,
@@ -230,9 +220,8 @@ class TextProcessor:
             "gallons_source": gallons_source,
             "price_per_gallon": price_per_gallon,
             "price_per_gallon_source": ppg_source,
-            "lines": lines,
+            "lines": lines if lines else [text] if text else [],
         }
-
     def _extract_authorized_vendor(self, text: str) -> str:
         normalized = self._normalize_text(text)
 
@@ -248,7 +237,19 @@ class TextProcessor:
         matches = self.AMOUNT_REGEX.findall(text)
         if not matches:
             return None
-        return matches[-1].replace(",", "")
+
+        values = []
+        for m in matches:
+            try:
+                values.append(float(m.replace(",", "")))
+            except Exception:
+                pass
+
+        if not values:
+            return None
+
+        value = max(values)
+        return f"{value:.3f}".rstrip("0").rstrip(".")
 
     def _extract_date(self, text: str) -> str | None:
         match = self.DATE_REGEX.search(text)
@@ -269,14 +270,6 @@ class TextProcessor:
         except Exception:
             return None
 
-    def _extract_price_per_gallon(self, text: str) -> Optional[float]:
-        m = self.PRICE_PER_GAL_REGEX.search(text)
-        if not m:
-            return None
-        try:
-            return float(m.group(1))
-        except Exception:
-            return None
 class ReceiptScanner:
     def __init__(
         self,
@@ -320,16 +313,11 @@ def receipts_dataframe(store: Dict[str, Dict[str, Any]]) -> List[Dict[str, objec
         total_raw = res.get("total") if isinstance(res, dict) else None
         total = _parse_amount_to_float(total_raw)
         gallons = None
-        ppg = None
         if isinstance(res, dict):
             try:
                 gallons = float(res.get("gallons")) if res.get("gallons") is not None else None
             except Exception:
                 gallons = None
-            try:
-                ppg = float(res.get("price_per_gallon")) if res.get("price_per_gallon") is not None else None
-            except Exception:
-                ppg = None
 
         fixed_flag = bool(v.get("fixed", False))
 
@@ -341,7 +329,6 @@ def receipts_dataframe(store: Dict[str, Dict[str, Any]]) -> List[Dict[str, objec
             or date in (None, "")
             or total == 0.0
             or gallons is None
-            or ppg is None
         ) and not fixed_flag
 
         rec = {
@@ -352,7 +339,6 @@ def receipts_dataframe(store: Dict[str, Dict[str, Any]]) -> List[Dict[str, objec
             "date": date,
             "total": total,
             "gallons": gallons,
-            "price_per_gallon": ppg,
             "error": res.get("error") if isinstance(res, dict) else None,
             "broken": broken,
             "fixed": bool(v.get("fixed", False)),

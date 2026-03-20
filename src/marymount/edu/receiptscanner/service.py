@@ -82,14 +82,18 @@ class ReceiptService:
         """
         good_total = 0.0
         count = 0
+        gallons = 0.0
         for v in self.store.values():
             res = v.get("result") or {}
             try:
                 t = float(str(res.get("total") or 0).replace(",", ""))
+                g = float(str(res.get("gallons") or 0).replace(",", ""))
             except Exception:
                 t = 0.0
+                g = 0.0
             if t > 0:
                 good_total += t
                 count += 1
+                gallons += g
 
-        return {"count": count, "total_sum": f"{good_total:.2f}"}
+        return {"count": count, "total_sum": f"{good_total:.2f} ", "total_gallons": f"{gallons:.2f}"}

@@ -100,18 +100,20 @@ def index():
         meta = records_map.get(receipt_id, {})
         item = {"id": receipt_id, **stored}
         item["broken"] = bool(meta.get("broken", stored.get("result") is None))
-        item["manual"] = bool(stored.get("manual", False))
         item["fixed"] = bool(stored.get("fixed", False))
         items.append(item)
 
     good_records = [r for r in records if not r.get("broken", False)]
     total_sum = sum(float(r.get("total") or 0.0) for r in good_records)
+    total_gallons = sum(float(r.get("gallons") or 0.0) for r in good_records)
     count = len(good_records)
 
     summary = {
         "count": count,
         "total_sum": f"{total_sum:.2f}",
+        "total_gallons": f"{total_gallons:.2f}",
     }
+
 
     # Available collections for filtering
     collections = sorted({v.get("collection") for v in STORE.values() if v.get("collection")})
