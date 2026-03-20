@@ -21,7 +21,7 @@ def main(argv=None):
     scanner = ReceiptScanner(
         use_ocr=args.use_ocr,
         image_processor=ImagePreprocessor(),
-        ocr_processor=OCRProcessor(),
+        ocr_processor=OCRProcessor() if args.use_ocr else None,
         text_processor=TextProcessor(),
     )
     results = {}

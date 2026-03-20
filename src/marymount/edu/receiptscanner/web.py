@@ -36,6 +36,7 @@ REPO_ROOT = BASE_DIR.parents[3]
 
 UPLOAD_DIR = REPO_ROOT / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+USE_OCR = False
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = "dev-secret-key"
@@ -138,7 +139,7 @@ def upload():
     uid = service.add_receipt(save_path, filename, collection=collection)
 
     scanner = ReceiptScanner(
-        use_ocr=True,
+        use_ocr=USE_OCR,
         image_processor=ImagePreprocessor(),
         ocr_processor=OCRProcessor(),
         text_processor=TextProcessor(),

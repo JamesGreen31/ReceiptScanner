@@ -19,8 +19,10 @@ try:
 except Exception:
     HEIF_AVAILABLE = False
 import os
-import pytesseract
-
+try:
+    import pytesseract
+except Exception:
+    pytesseract = None
 
 class ImagePreprocessor:
     SUPPORTED_FORMATS = {".jpg", ".jpeg", ".png", ".heic"}
@@ -85,12 +87,17 @@ class ImagePreprocessor:
 class OCRProcessor:
     def __init__(
         self,
-        tesseract_cmd: str | None = "C:\\Users\\james\\AppData\\Local\\Programs\\Tesseract-OCR\\tesseract.exe",
+        tesseract_cmd: str | None = None,
         lang: str = "eng",
         psm: int = 6,
         oem: int = 3,
         ocr_log_dir: str | None = None,
     ) -> None:
+        if pytesseract is None:
+            raise RuntimeError(
+                "OCR support is unavailable because pytesseract is not installed."
+            )
+
         self.lang = lang
         self.psm = psm
         self.oem = oem
@@ -280,18 +287,30 @@ class ReceiptScanner:
     ):
         self.use_ocr = use_ocr
         self.image_processor = image_processor or ImagePreprocessor()
-        self.ocr_processor = ocr_processor or OCRProcessor()
+        self.ocr_processor = ocr_processor if use_ocr else None
+        if self.use_ocr and self.ocr_processor is None:
+            self.ocr_processor = OCRProcessor()
         self.text_processor = text_processor or TextProcessor()
 
     def parse_image(self, image_path: str) -> Dict[str, Any]:
         preprocessed = self.image_processor.preprocess(image_path)
+
         if self.use_ocr:
+            if self.ocr_processor is None:
+                raise RuntimeError("OCR is enabled but no OCR processor is configured.")
             text = self.ocr_processor.extract_text(preprocessed)
         else:
-            text = f"Stubbed text for {image_path}"
+            text = self._demo_text_for_image(image_path)
 
         return self.text_processor.parse_text(text)
 
+    def _demo_text_for_image(self, image_path: str) -> str:
+        return "\n".join([
+            "EXXON MOBILE",
+            "01/09/2026",
+            "$168.730",
+            "12.0932 g @ $2.903 /g",
+        ])
 
 def _parse_amount_to_float(value: object) -> float:
     if value is None:
