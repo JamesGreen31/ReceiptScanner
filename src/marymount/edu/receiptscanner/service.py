@@ -1,3 +1,13 @@
+"""
+ Service.py 
+
+ Simple application service layer for receipts.
+ 
+ Authors: James Green, Chris Duckers, Numi Tesfay
+ Supervised by: Dr. Natalia Bell
+ Marymount University, Spring 2024
+"""
+
 from __future__ import annotations
 
 from typing import Dict, Any, List, Optional, Tuple

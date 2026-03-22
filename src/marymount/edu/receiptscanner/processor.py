@@ -1,10 +1,14 @@
-"""Minimal receipt processor frame.
-
-This file intentionally contains a very small, stable frame for the
-`ReceiptScanner` and a lightweight `receipts_dataframe` helper. The goal
-is to provide a clear starting point for implementing parsing logic while
-keeping callers (CLI / web) working against a predictable API.
 """
+ Processor.py 
+
+ Modularized receipt processing pipeline with image preprocessing, OCR extraction, and text parsing.
+
+ Authors: James Green, Chris Duckers, Numi Tesfay
+ Supervised by: Dr. Natalia Bell
+ Marymount University, Spring 2024
+"""
+
+
 from __future__ import annotations
 
 from typing import Dict, Any, List, Optional
@@ -12,6 +16,9 @@ from typing import Dict, Any, List, Optional
 import re
 from pathlib import Path
 from PIL import Image, UnidentifiedImageError
+
+"""Optional dependencies for HEIC support and OCR. These are imported with try/except to allow the core pipeline to function even if these are not
+installed. See `ImagePreprocessor` and `OCRProcessor` for details."""
 try:
     # Optional HEIC support via pillow-heif (if installed)
     import pillow_heif  # type: ignore
@@ -25,16 +32,18 @@ except Exception:
     pytesseract = None
 
 class ImagePreprocessor:
+    """Preprocesses receipt images to improve OCR accuracy."""
+
     SUPPORTED_FORMATS = {".jpg", ".jpeg", ".png", ".heic"}
 
     def preprocess(self, image_path: str) -> str:
         path = Path(image_path)
 
-        # --- Validation: image file exists ---
+        # Validation: image file exists 
         if not path.exists() or not path.is_file():
             raise ValueError(f"File does not exist: {image_path}")
 
-        # --- Validation: extension ---
+        # Validation: extension 
         suffix = path.suffix.lower()
         if suffix not in self.SUPPORTED_FORMATS:
             raise ValueError(
@@ -42,6 +51,7 @@ class ImagePreprocessor:
                 f"Supported: {', '.join(sorted(self.SUPPORTED_FORMATS))}"
             )
 
+        # Validation: HEIC support requires pillow-heif
         if suffix == ".heic" and not HEIF_AVAILABLE:
             raise ValueError(
                 "HEIC input detected but pillow-heif is not installed. "
@@ -50,13 +60,13 @@ class ImagePreprocessor:
 
         try:
             with Image.open(path) as img:
-                # --- Convert to grayscale ---
+                # Convert to grayscale for improved OCR accuracy (many receipts are black-and-white)
                 img = img.convert("L")
 
-                # --- Basic normalization (auto contrast stretch) ---
+                #  Basic normalization
                 img = self._normalize(img)
 
-                # --- Save processed version ---
+                # Save processed version
                 processed_path = path.with_name(f"{path.stem}_processed{path.suffix}")
                 img.save(processed_path)
 

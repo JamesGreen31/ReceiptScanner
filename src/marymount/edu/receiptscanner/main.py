@@ -1,3 +1,12 @@
+"""
+
+ Main.py
+ 
+ Simple CLI for testing receipt parsing without the web server.
+ Authors: James Green, Chris Duckers, Numi Tesfay
+ Supervised by: Dr. Natalia Bell
+ Marymount University, Spring 2024
+ """
 import argparse
 import json
 import sys

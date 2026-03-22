@@ -1,8 +1,10 @@
-"""Minimal Flask web POC for uploading receipts and viewing statuses.
+"""
+ Web.py
 
-This is intentionally a simple proof-of-concept. It uses the existing
-`ReceiptScanner` stub (no OCR) to produce deterministic results and keeps
-state in memory.
+ Simple Flask web server for receipt scanning and management.
+ Authors: James Green, Chris Duckers, Numi Tesfay
+ Supervised by: Dr. Natalia Bell
+ Marymount University, Spring 2024
 """
 from __future__ import annotations
 
@@ -36,7 +38,7 @@ REPO_ROOT = BASE_DIR.parents[3]
 
 UPLOAD_DIR = REPO_ROOT / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-USE_OCR = False
+USE_OCR = True
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = "dev-secret-key"
