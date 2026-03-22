@@ -247,7 +247,35 @@ def download_item(id: str):
 
 @app.route("/clear", methods=["POST"])
 def clear_all():
+
     STORE.clear()
+    service.store[sample_good_id] = {
+        "filename": "sample_good.jpg",
+        "status": "done",
+        "result": {
+            "merchant": "Sample Store",
+            "date": "2026-03-14",
+            "total": "23.45",
+            "lines": ["Sample good receipt"],
+        },
+        "manual": False,
+        "fixed": False,
+        "path": str(UPLOAD_DIR / "sample_good.jpg"),
+    }
+
+    service.store[sample_broken_id] = {
+        "filename": "sample_broken.jpg",
+        "status": "done",
+        "result": {
+            "merchant": None,
+            "date": None,
+            "total": None,
+            "lines": ["Broken OCR frame - missing fields"],
+        },
+        "manual": False,
+        "fixed": False,
+        "path": str(UPLOAD_DIR / "sample_broken.jpg"),
+    }
     return redirect(url_for("index"))
 
 
