@@ -62,7 +62,6 @@ service.store[sample_good_id] = {
         "total": "23.45",
         "lines": ["Sample good receipt"],
     },
-    "manual": False,
     "fixed": False,
     "path": str(UPLOAD_DIR / "sample_good.jpg"),
 }
@@ -76,7 +75,6 @@ service.store[sample_broken_id] = {
         "total": None,
         "lines": ["Broken OCR frame - missing fields"],
     },
-    "manual": False,
     "fixed": False,
     "path": str(UPLOAD_DIR / "sample_broken.jpg"),
 }
@@ -258,7 +256,6 @@ def clear_all():
             "total": "23.45",
             "lines": ["Sample good receipt"],
         },
-        "manual": False,
         "fixed": False,
         "path": str(UPLOAD_DIR / "sample_good.jpg"),
     }
@@ -272,7 +269,6 @@ def clear_all():
             "total": None,
             "lines": ["Broken OCR frame - missing fields"],
         },
-        "manual": False,
         "fixed": False,
         "path": str(UPLOAD_DIR / "sample_broken.jpg"),
     }
