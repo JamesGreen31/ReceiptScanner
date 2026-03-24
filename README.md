@@ -1,57 +1,135 @@
 # ReceiptScanner
-A simple POC for a receipt information extractor
 
-## Install (development)
+ReceiptScanner is a Python-based proof-of-concept for extracting structured data from receipt images.
 
-Create and activate a virtual environment, then install the package in editable mode with development extras:
+It provides:
 
-```powershell
-py -m venv venv
-.\venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e '.[all]'
-```
+- A Flask web application for uploading and reviewing receipts
+- A CLI interface for running the processing pipeline
+- Optional OCR-backed extraction using Tesseract
+- A modular architecture for experimentation and extension
 
-## Run
+This project is intentionally a prototype, not a production system.
 
-Run the console script after installation:
+---
 
-```powershell
-receiptscanner
-```
+## Features
 
-Or run the module directly (without installing):
+- Upload receipt images via web UI
+- Extract key fields:
+  - Merchant
+  - Date
+  - Total
+  - Gallons
+  - Price per gallon
+- View OCR output
+- Manually correct extracted values
+- Organize receipts into collections
+- View summary statistics
+- Run with or without OCR
 
-```powershell
-python -c "import sys; sys.path.insert(0, 'src'); from marymount.edu.receiptscanner import main as m; m.main()"
-```
+---
 
-## Tests
+## Installation
 
-Run tests with:
+Clone the repository:
 
-```powershell
-python -m pytest -q
-```
+    git clone https://github.com/JamesGreen31/ReceiptScanner.git
+    cd ReceiptScanner
 
-## Development
+Create a virtual environment:
 
-Formatting and linting tools are available via the `dev` extras in `pyproject.toml`.
+    python -m venv venv
 
-## Web POC
+Activate environment:
 
-The project includes a minimal Flask-based proof-of-concept web UI for uploading receipts and viewing statuses. It uses the stubbed scanner (no OCR) so no additional system dependencies are required.
+Windows:
 
-Install the web extra and run the web server:
+    venv\Scripts\activate
 
-```powershell
-py -m venv venv
-.\venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e '.[web]'
-python -m marymount.edu.receiptscanner.web
-```
+macOS/Linux:
 
-Then open `http://localhost:8000` in your browser. Uploaded files are saved to a local `uploads/` folder and processed synchronously with stub output.
+    source venv/bin/activate
 
+Install dependencies:
 
+    pip install -e ".[all]"
+
+---
+
+## Running the Application
+
+### Web App
+
+    python -m marymount.edu.receiptscanner.web
+
+Open in browser:
+
+    http://localhost:8000
+
+### CLI
+
+    receiptscanner
+
+---
+
+## OCR Setup
+
+OCR requires Tesseract installed on your system.
+
+Disable OCR if needed:
+
+    USE_OCR = False
+
+---
+
+## Docker
+
+### Build
+
+    docker build -t receiptscanner .
+
+### Run
+
+    docker run -p 8000:8000 receiptscanner
+
+### Example Dockerfile
+
+    FROM python:3.11-slim
+
+    RUN apt-get update && \
+        apt-get install -y tesseract-ocr && \
+        rm -rf /var/lib/apt/lists/*
+
+    WORKDIR /app
+    COPY . .
+
+    RUN pip install --upgrade pip && \
+        pip install -e ".[all]"
+
+    CMD ["python", "-m", "marymount.edu.receiptscanner.web"]
+
+---
+
+## Project Structure
+
+    src/marymount/edu/receiptscanner/
+    ├── main.py
+    ├── processor.py
+    ├── service.py
+    ├── web.py
+
+---
+
+## Limitations
+
+- OCR accuracy varies based on image quality
+- Rule-based parsing (not ML-based)
+- No persistent storage (in-memory only)
+- Not production hardened
+
+---
+
+## License
+
+MIT License
